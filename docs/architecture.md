@@ -191,22 +191,29 @@ Team creation, team assignment, team scoring behavior, and team-mode UI are defe
 
 ### Room State
 
-Room state should be represented as an explicit state machine.
+A Room owns a `GameState` whose status represents the lifecycle of the whole game.
+The current `RoundState` has a separate phase so round progression is not encoded as room-wide statuses.
 The first version can keep active room state in process memory while persisting durable content and completed results as needed.
 If the backend restarts, active rooms may be lost unless persistence is added intentionally.
 
 ```mermaid
 stateDiagram-v2
   [*] --> Lobby
-  Lobby --> Configuring: host selects pack and mode
-  Configuring --> Ready: required settings complete
+  Lobby --> Ready: game configured
   Ready --> Playing: host starts game
-  Playing --> RoundIntro
-  RoundIntro --> RoundActive
-  RoundActive --> RoundReveal
-  RoundReveal --> Scoreboard
-  Scoreboard --> RoundIntro: next round
-  Scoreboard --> Finished: final round complete
+  Playing --> Finished: final round complete
+  Finished --> [*]
+```
+
+While the game is playing, each round follows its own lifecycle:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Intro
+  Intro --> Active
+  Active --> Reveal
+  Reveal --> Scoreboard
+  Scoreboard --> Finished
   Finished --> [*]
 ```
 

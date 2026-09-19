@@ -1,15 +1,17 @@
 import secrets
-from collections.abc import Container
+from collections.abc import Callable, Container
 from copy import deepcopy
 from datetime import UTC, datetime
 from threading import RLock
+from typing import TypeVar
 from uuid import uuid4
 
-from app.rooms.models import ParticipationType, Player, Room, RoomStatus
+from app.rooms.models import ParticipationType, Player, Room
 
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 ROOM_CODE_LENGTH = 4
+MutationResult = TypeVar("MutationResult")
 
 
 class RoomNotFoundError(Exception):
@@ -34,13 +36,24 @@ class InMemoryRoomStore:
             room = Room(
                 room_code=room_code,
                 host_token=host_token,
-                status=RoomStatus.LOBBY,
                 version=1,
                 created_at=datetime.now(UTC),
             )
             self._rooms[room_code] = room
             self._host_tokens.add(host_token)
             return deepcopy(room)
+
+    def mutate_room(
+        self,
+        room_code: str,
+        mutation: Callable[[Room], MutationResult],
+    ) -> tuple[Room, MutationResult]:
+        with self._lock:
+            room = self._rooms.get(room_code.upper())
+            if room is None:
+                raise RoomNotFoundError
+            result = mutation(room)
+            return deepcopy(room), deepcopy(result)
 
     def get_room(self, room_code: str) -> Room:
         with self._lock:

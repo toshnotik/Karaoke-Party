@@ -2,9 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-
-class RoomStatus(StrEnum):
-    LOBBY = "lobby"
+from app.game.state import GameState
 
 
 class ParticipationType(StrEnum):
@@ -24,10 +22,10 @@ class Player:
 class Room:
     room_code: str
     host_token: str
-    status: RoomStatus
     version: int
     created_at: datetime
     players: list[Player] = field(default_factory=list)
+    game: GameState = field(default_factory=GameState)
 
     def mark_public_state_changed(self) -> None:
         self.version += 1

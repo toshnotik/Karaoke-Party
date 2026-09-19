@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, StringConstraints
 from pydantic.alias_generators import to_camel
 
-from app.rooms.models import ParticipationType, Player, Room, RoomStatus
+from app.game.state import GameStatus, RoundPhase, ScoreTargetType
+from app.rooms.models import ParticipationType, Player, Room
 from app.rooms.store import (
     InvalidPlayerTokenError,
     RoomNotFoundError,
@@ -28,17 +29,46 @@ class PublicPlayer(ApiModel):
     participation_type: ParticipationType
 
 
+class PublicRoundResult(ApiModel):
+    answer: str
+    correct_player_ids: list[str]
+
+
+class PublicRound(ApiModel):
+    id: str
+    number: int
+    phase: RoundPhase
+    prompt: str
+    result: PublicRoundResult | None
+
+
+class PublicScore(ApiModel):
+    target_type: ScoreTargetType
+    target_id: str
+    points: int
+
+
+class PublicGame(ApiModel):
+    mode: str | None
+    status: GameStatus
+    round_number: int
+    total_rounds: int
+    current_round: PublicRound | None
+    scores: list[PublicScore]
+
+
 class RoomSnapshot(ApiModel):
     room_code: str
-    status: RoomStatus
+    status: GameStatus
     version: int
     players: list[PublicPlayer]
+    game: PublicGame
 
 
 class CreateRoomResponse(ApiModel):
     room_code: str
     host_token: str
-    status: RoomStatus
+    status: GameStatus
     version: int
 
 
@@ -62,7 +92,7 @@ def create_room() -> CreateRoomResponse:
     return CreateRoomResponse(
         room_code=room.room_code,
         host_token=room.host_token,
-        status=room.status,
+        status=room.game.status,
         version=room.version,
     )
 
@@ -109,9 +139,45 @@ def join_room(
 def _room_snapshot(room: Room) -> RoomSnapshot:
     return RoomSnapshot(
         room_code=room.room_code,
-        status=room.status,
+        status=room.game.status,
         version=room.version,
         players=[_public_player(player) for player in room.players],
+        game=_public_game(room),
+    )
+
+
+def _public_game(room: Room) -> PublicGame:
+    round_state = room.game.current_round
+    public_round = None
+    if round_state is not None:
+        result = None
+        if round_state.result is not None:
+            result = PublicRoundResult(
+                answer=round_state.result.answer,
+                correct_player_ids=list(round_state.result.correct_player_ids),
+            )
+        public_round = PublicRound(
+            id=round_state.id,
+            number=round_state.number,
+            phase=round_state.phase,
+            prompt=round_state.prompt,
+            result=result,
+        )
+
+    return PublicGame(
+        mode=room.game.mode,
+        status=room.game.status,
+        round_number=room.game.round_number,
+        total_rounds=room.game.total_rounds,
+        current_round=public_round,
+        scores=[
+            PublicScore(
+                target_type=score.target_type,
+                target_id=score.target_id,
+                points=score.points,
+            )
+            for score in room.game.scores
+        ],
     )
 
 
