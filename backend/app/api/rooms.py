@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 from pydantic.alias_generators import to_camel
 
 from app.game.state import GameStatus, RoundPhase, ScoreTargetType
+from app.realtime.manager import connection_manager
 from app.rooms.models import ParticipationType, Player, Room
 from app.rooms.store import (
     InvalidPlayerTokenError,
@@ -110,13 +111,13 @@ def get_room(room_code: str) -> RoomSnapshot:
     response_model=JoinRoomResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def join_room(
+async def join_room(
     room_code: str,
     request: JoinRoomRequest,
     response: Response,
 ) -> JoinRoomResponse:
     try:
-        room, player, created = room_store.add_or_reconnect_player(
+        mutation = room_store.add_or_reconnect_player(
             room_code=room_code,
             name=request.name,
             player_token=request.player_token,
@@ -125,6 +126,14 @@ def join_room(
         raise HTTPException(status_code=404, detail="Room not found") from error
     except InvalidPlayerTokenError as error:
         raise HTTPException(status_code=401, detail="Invalid player token") from error
+
+    room = mutation.room
+    player, created = mutation.value
+    if mutation.changed:
+        await connection_manager.broadcast_room_updated(
+            room.room_code,
+            room.version,
+        )
 
     if not created:
         response.status_code = status.HTTP_200_OK

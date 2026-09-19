@@ -1,9 +1,10 @@
 import secrets
 from collections.abc import Callable, Container
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import RLock
-from typing import TypeVar
+from typing import Generic, TypeVar
 from uuid import uuid4
 
 from app.rooms.models import ParticipationType, Player, Room
@@ -12,6 +13,13 @@ from app.rooms.models import ParticipationType, Player, Room
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 ROOM_CODE_LENGTH = 4
 MutationResult = TypeVar("MutationResult")
+
+
+@dataclass(frozen=True)
+class RoomMutation(Generic[MutationResult]):
+    room: Room
+    value: MutationResult
+    changed: bool
 
 
 class RoomNotFoundError(Exception):
@@ -47,13 +55,18 @@ class InMemoryRoomStore:
         self,
         room_code: str,
         mutation: Callable[[Room], MutationResult],
-    ) -> tuple[Room, MutationResult]:
+    ) -> RoomMutation[MutationResult]:
         with self._lock:
             room = self._rooms.get(room_code.upper())
             if room is None:
                 raise RoomNotFoundError
+            previous_version = room.version
             result = mutation(room)
-            return deepcopy(room), deepcopy(result)
+            return RoomMutation(
+                room=deepcopy(room),
+                value=deepcopy(result),
+                changed=room.version != previous_version,
+            )
 
     def get_room(self, room_code: str) -> Room:
         with self._lock:
@@ -67,12 +80,13 @@ class InMemoryRoomStore:
         room_code: str,
         name: str,
         player_token: str | None = None,
-    ) -> tuple[Room, Player, bool]:
+    ) -> RoomMutation[tuple[Player, bool]]:
         with self._lock:
             normalized_code = room_code.upper()
             room = self._rooms.get(normalized_code)
             if room is None:
                 raise RoomNotFoundError
+            previous_version = room.version
 
             if player_token is not None:
                 player_location = self._players_by_token.get(player_token)
@@ -83,7 +97,11 @@ class InMemoryRoomStore:
                 if player.name != name:
                     player.name = name
                     room.mark_public_state_changed()
-                return deepcopy(room), deepcopy(player), False
+                return RoomMutation(
+                    room=deepcopy(room),
+                    value=(deepcopy(player), False),
+                    changed=room.version != previous_version,
+                )
 
             new_token = self._generate_unique_token(self._players_by_token)
             player = Player(
@@ -96,7 +114,11 @@ class InMemoryRoomStore:
             room.players.append(player)
             self._players_by_token[new_token] = (normalized_code, player.id)
             room.mark_public_state_changed()
-            return deepcopy(room), deepcopy(player), True
+            return RoomMutation(
+                room=deepcopy(room),
+                value=(deepcopy(player), True),
+                changed=True,
+            )
 
     def clear(self) -> None:
         with self._lock:

@@ -373,10 +373,11 @@ def test_store_runs_mutations_under_lock_and_returns_snapshot() -> None:
     created = store.create_room()
     room_code = created.room_code
 
-    configured, _ = store.mutate_room(
+    configured_mutation = store.mutate_room(
         room_code,
         lambda current: engine.configure_game(current, mode),
     )
+    configured = configured_mutation.room
     assert configured.version == created.version + 1
 
     engine.start_game(configured, mode)
@@ -392,13 +393,15 @@ def test_concurrent_valid_and_invalid_actions_do_not_corrupt_room() -> None:
     mode = DummyGameMode()
     created = store.create_room()
     room_code = created.room_code
-    joined, player, _ = store.add_or_reconnect_player(room_code, "Player")
+    join_mutation = store.add_or_reconnect_player(room_code, "Player")
+    joined = join_mutation.room
+    player, _ = join_mutation.value
     store.mutate_room(room_code, lambda room: engine.configure_game(room, mode))
     store.mutate_room(room_code, lambda room: engine.start_game(room, mode))
-    active, _ = store.mutate_room(
+    active = store.mutate_room(
         room_code,
         lambda room: engine.activate_round(room, mode),
-    )
+    ).room
 
     def submit(action_type: str) -> Exception | None:
         try:

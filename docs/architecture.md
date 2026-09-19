@@ -270,14 +270,13 @@ WS /ws/rooms/{room_code}
 ```
 
 Events should be typed and versioned enough to evolve safely.
-The simplest useful envelope is:
+The initial notification contract contains no room snapshot or private data:
 
 ```json
 {
   "type": "room.updated",
   "roomCode": "ABCD",
-  "version": 12,
-  "payload": {}
+  "version": 12
 }
 ```
 
@@ -287,23 +286,14 @@ Use monotonically increasing room versions so clients can ignore stale messages 
 
 ## Realtime Contract
 
-The backend should broadcast events for:
-
-- Player joined.
-- Player left or disconnected.
-- Room settings changed.
-- Game started.
-- Round started.
-- Round state changed.
-- Player action accepted.
-- Player action rejected when visible feedback is needed.
-- Score changed.
-- Game finished.
+The backend initially sends `room.connected` after connection and `room.updated`
+after a successful public state change. Both events contain only the room code
+and current version. More specific events remain deferred until they are needed.
 
 Clients should treat WebSocket events as hints that backend state changed.
 For complex recovery, reconnect, or version mismatch, the client should fetch `GET /api/rooms/{room_code}` and replace local room state with the backend snapshot.
 
-The WebSocket manager should track connections by room and role.
+The WebSocket manager tracks public connections by room in one backend process.
 It must not equate a Player with a WebSocket connection: local players have no connection, and remote players remain room participants while temporarily disconnected.
 It should not own game rules.
 Its job is delivery, not deciding state.
@@ -321,8 +311,7 @@ Initial engine responsibilities:
 - Start and finish rounds.
 - Store current prompt and answer state.
 - Calculate scores for an explicit Player or Team target.
-- Produce events for connected clients.
-- Return a current room snapshot suitable for REST responses.
+- Produce deterministic state changes that the API layer can announce.
 
 Game modes should be implemented as small modules behind a simple interface.
 Avoid building a large plugin system initially.

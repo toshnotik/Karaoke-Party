@@ -60,6 +60,16 @@ Stop the development services with `docker compose down`.
 
 Active rooms are process-local and are cleared when the backend restarts.
 
+## Realtime
+
+Clients connect to `WS /ws/rooms/{roomCode}` and receive `room.connected` and
+`room.updated` events containing only the room code and version. Commands remain
+REST requests; clients fetch `GET /api/rooms/{roomCode}` whenever the announced
+version is newer than their local snapshot.
+
+Connections and rooms are held in one backend process. Multi-process realtime
+coordination is not supported yet.
+
 ## Project Structure
 
 ```text
