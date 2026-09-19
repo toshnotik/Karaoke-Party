@@ -1,6 +1,6 @@
 # Karaoke Party
 
-Karaoke Party is a family browser party game with separate Screen, Host, Player, and Admin interfaces. This repository currently contains the Phase 1 project skeleton only.
+Karaoke Party is a family browser party game with separate Screen, Host, Player, and Admin interfaces.
 
 ## Stack
 
@@ -52,6 +52,14 @@ docker compose up --build
 
 Stop the development services with `docker compose down`.
 
+## Room API
+
+- `POST /api/rooms` creates an in-memory room and returns its host token.
+- `GET /api/rooms/{roomCode}` returns the public room snapshot.
+- `POST /api/rooms/{roomCode}/join` joins a remote player or reconnects one with a player token.
+
+Active rooms are process-local and are cleared when the backend restarts.
+
 ## Project Structure
 
 ```text
@@ -61,4 +69,3 @@ docs/      Architecture documentation
 ```
 
 See `docs/architecture.md` for system boundaries and the development roadmap.
-
