@@ -1,7 +1,19 @@
 :root {
+  --color-bg: #101216;
+  --color-panel: #1a1e24;
+  --color-panel-raised: #222831;
+  --color-text: #f7f4ee;
+  --color-muted: #aeb6c2;
+  --color-accent: #ff4f70;
+  --color-cyan: #35c9d0;
+  --color-cyan-soft: #183d42;
+  --color-yellow: #ffd166;
+  --color-line: #303640;
+  --color-line-strong: #515966;
+  --shadow-panel: 0 18px 50px rgb(0 0 0 / 28%);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #111827;
-  background: #f8fafc;
+  color: var(--color-text);
+  background: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -20,7 +32,10 @@ body,
 
 body {
   min-height: 100vh;
+  background: var(--color-bg);
 }
+
+a { color: var(--color-cyan); }
 
 button,
 input,
@@ -28,4 +43,3 @@ select,
 textarea {
   font: inherit;
 }
-

@@ -1,0 +1,18 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.content {
+  display: grid;
+  width: min(100%, 30rem);
+  gap: 1rem;
+}
+
+.screen { font-size: 1.15rem; }

@@ -1,6 +1,12 @@
 import { apiBaseUrl } from '../api/client'
 import { parseRoomEvent, type RoomEvent } from './events'
 
+export type SocketStatus =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+
 const reconnectDelayMs = 1_000
 
 export function roomWebSocketUrl(roomCode: string): string {
@@ -17,6 +23,7 @@ export class RoomSocket {
   constructor(
     private readonly roomCode: string,
     private readonly onEvent: (event: RoomEvent) => void,
+    private readonly onStatusChange: (status: SocketStatus) => void = () => {},
   ) {}
 
   connect(): void {
@@ -28,8 +35,15 @@ export class RoomSocket {
     }
 
     this.manuallyClosed = false
+    this.onStatusChange(
+      this.reconnectTimer === null ? 'connecting' : 'reconnecting',
+    )
     const socket = new WebSocket(roomWebSocketUrl(this.roomCode))
     this.socket = socket
+
+    socket.onopen = () => {
+      this.onStatusChange('connected')
+    }
 
     socket.onmessage = (message) => {
       if (typeof message.data !== 'string') {
@@ -47,6 +61,7 @@ export class RoomSocket {
       }
       this.socket = null
       if (!this.manuallyClosed && this.reconnectTimer === null) {
+        this.onStatusChange('reconnecting')
         this.reconnectTimer = window.setTimeout(
           () => {
             this.reconnectTimer = null
@@ -66,5 +81,6 @@ export class RoomSocket {
     }
     this.socket?.close()
     this.socket = null
+    this.onStatusChange('disconnected')
   }
 }

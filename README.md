@@ -52,6 +52,15 @@ docker compose up --build
 
 Stop the development services with `docker compose down`.
 
+### Open From Another Device
+
+Start the development services, find the computer's local network address, and
+open `http://<local-ip>:5173` on a phone connected to the same Wi-Fi network.
+Vite listens on the LAN interface, and the frontend uses the page hostname to
+reach the backend on port `8000`. Development CORS accepts localhost and private
+LAN addresses only; deployed environments should configure their explicit
+public origins.
+
 ## Room API
 
 - `POST /api/rooms` creates an in-memory room and returns its host token.

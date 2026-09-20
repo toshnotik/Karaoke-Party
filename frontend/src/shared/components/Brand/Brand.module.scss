@@ -1,0 +1,25 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.mark {
+  display: grid;
+  width: 2.75rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  color: var(--color-accent);
+  font-size: 0.8rem;
+}
+
+.compact {
+  font-size: 0.95rem;
+
+  .mark { width: 2.25rem; }
+}

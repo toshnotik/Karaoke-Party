@@ -12,7 +12,7 @@
   }
 
   h1 {
-    font-size: clamp(2rem, 8vw, 4rem);
+    font-size: 4rem;
   }
 
   p {
@@ -20,3 +20,8 @@
   }
 }
 
+@media (max-width: 40rem) {
+  .page h1 {
+    font-size: 2.5rem;
+  }
+}

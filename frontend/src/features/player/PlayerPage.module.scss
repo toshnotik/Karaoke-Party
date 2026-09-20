@@ -1,0 +1,87 @@
+.joinPage,
+.lobbyPage {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.joinPage {
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.joinShell {
+  width: calc(100vw - 2.5rem);
+  max-width: 29rem;
+  min-width: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.joinPanel,
+.participants {
+  padding: 1.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-panel);
+}
+
+.joinPanel {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+
+  h1 { margin: 0; overflow-wrap: anywhere; font-size: 3rem; }
+  > p:not(.kicker) { margin: 0; color: var(--color-muted); }
+}
+
+.kicker {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lobbyPage {
+  padding: 1rem max(1rem, calc((100vw - 36rem) / 2)) 2rem;
+}
+
+.header {
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.welcome {
+  padding: 3.5rem 0;
+  text-align: center;
+
+  h1 { margin: 0.4rem 0; font-size: 3.75rem; }
+  > p:not(.kicker) { margin: 0; color: var(--color-muted); font-size: 1.1rem; }
+}
+
+.waiting {
+  height: 3rem;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1.5rem;
+
+  span { width: 0.5rem; height: 45%; background: var(--color-cyan); }
+  span:nth-child(2) { height: 90%; background: var(--color-accent); }
+  span:nth-child(3) { height: 65%; background: var(--color-yellow); }
+}
+
+.participants h2 { margin: 0 0 1rem; font-size: 1.2rem; }
+
+@media (max-width: 480px) {
+  .header { align-items: flex-start; flex-direction: column; padding: 0.75rem 0; }
+  .joinPanel h1 { font-size: 2rem; }
+  .welcome h1 { font-size: 2.75rem; }
+}
