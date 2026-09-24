@@ -8,8 +8,19 @@ export type PublicPlayer = {
 }
 
 export type PublicRoundResult = {
-  answer: string
+  answer: string | null
   correctPlayerIds: string[]
+  song: {
+    title: string
+    artist: string
+    year: number | null
+  } | null
+  winnerPlayerId: string | null
+}
+
+export type PublicModeState = {
+  currentResponderId: string | null
+  excludedPlayerIds: string[]
 }
 
 export type PublicRound = {
@@ -18,6 +29,7 @@ export type PublicRound = {
   phase: RoundPhase
   prompt: string
   result: PublicRoundResult | null
+  modeState: PublicModeState | null
 }
 
 export type PublicScore = {

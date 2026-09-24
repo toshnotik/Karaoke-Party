@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -8,6 +8,7 @@ from pydantic.alias_generators import to_camel
 from app.api.auth import require_host, require_player
 from app.game.engine import GameEngine
 from app.game.errors import (
+    InvalidGameConfiguration,
     InvalidGameState,
     InvalidPlayerAction,
     InvalidRoundPhase,
@@ -15,10 +16,13 @@ from app.game.errors import (
 )
 from app.game.modes.base import GameMode
 from app.game.modes.dummy import DummyGameMode
+from app.game.modes.guess_song import GuessSongMode
 from app.game.state import ActionValue
 from app.realtime.manager import connection_manager
 from app.rooms.models import Player, Room
 from app.rooms.store import RoomNotFoundError, room_store
+from app.settings import settings
+from app.songs import load_songs
 
 
 class ApiModel(BaseModel):
@@ -35,7 +39,11 @@ class ConfigureGameRequest(ApiModel):
 
 class PlayerActionRequest(ApiModel):
     action_type: str
-    value: ActionValue
+    value: ActionValue = None
+
+
+class JudgeRoundRequest(ApiModel):
+    correct: bool
 
 
 class CommandResponse(ApiModel):
@@ -49,10 +57,15 @@ router = APIRouter(prefix='/rooms/{room_code}/game', tags=['game'])
 
 
 def _configured_mode(room: Room) -> GameMode:
-    mode = modes.get(room.game.mode or '')
-    if mode is None:
+    if room.game.mode_instance is None:
         raise InvalidGameState('Game mode is not configured')
-    return mode
+    return cast(GameMode, room.game.mode_instance)
+
+
+def _mode_for_configuration(identifier: str) -> GameMode | None:
+    if identifier == 'guess_song':
+        return GuessSongMode(load_songs(settings.song_manifest_path))
+    return modes.get(identifier)
 
 
 async def _mutate(
@@ -67,6 +80,8 @@ async def _mutate(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except (InvalidGameState, InvalidRoundPhase, InvalidPlayerAction) as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    except InvalidGameConfiguration as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
     room = mutation.room
     if mutation.changed:
@@ -80,7 +95,10 @@ async def configure_game(
     request: ConfigureGameRequest,
     _: Annotated[None, Depends(require_host)],
 ) -> CommandResponse:
-    mode = modes.get(request.mode)
+    try:
+        mode = _mode_for_configuration(request.mode)
+    except InvalidGameConfiguration as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     if mode is None:
         raise HTTPException(status_code=400, detail='Unknown game mode')
     return await _mutate(room_code, lambda room: engine.configure_game(room, mode))
@@ -116,6 +134,22 @@ async def reveal_round(
     return await _mutate(
         room_code,
         lambda room: engine.reveal_round(room, _configured_mode(room)),
+    )
+
+
+@router.post('/round/judge', response_model=CommandResponse)
+async def judge_round(
+    room_code: str,
+    request: JudgeRoundRequest,
+    _: Annotated[None, Depends(require_host)],
+) -> CommandResponse:
+    return await _mutate(
+        room_code,
+        lambda room: engine.judge_round(
+            room,
+            _configured_mode(room),
+            request.correct,
+        ),
     )
 
 

@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 DEV_CORS_ORIGIN_REGEX = (
@@ -23,6 +24,12 @@ class Settings:
     app_name: str = "Karaoke Party API"
     cors_origins: tuple[str, ...] = tuple(_cors_origins())
     cors_origin_regex: str | None = _cors_origin_regex()
+    song_manifest_path: Path = Path(
+        os.getenv(
+            "SONG_MANIFEST_PATH",
+            Path(__file__).resolve().parents[2] / "data" / "songs" / "songs.json",
+        )
+    )
 
 
 settings = Settings()

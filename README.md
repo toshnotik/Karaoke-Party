@@ -75,8 +75,18 @@ configure, start, activate, reveal, scoreboard, and finish endpoints under
 the player's token at `POST /api/rooms/{roomCode}/game/actions`; the backend
 derives player identity from that token.
 
-Only the technical `dummy` mode is available for development and integration
-testing. It is not a user-facing game mode.
+The technical `dummy` mode remains available for integration testing. Guess
+Song is implemented as a backend/domain mode with deterministic song order,
+atomic buzz handling, host judging, and scoring; its final game UI and audio
+playback are deferred.
+
+## Development Songs
+
+Development song metadata lives in `data/songs/songs.json`. Each entry contains
+an id, title, artist, optional year, audio filename, preview start, and preview
+duration. Put local audio files in `data/songs/media/` using the manifest's
+`audio_file` names. Media files in that directory are ignored by Git, and no
+copyrighted MP3 files are stored in the repository.
 
 Active rooms are process-local and are cleared when the backend restarts.
 

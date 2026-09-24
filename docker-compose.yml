@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./data:/data:ro
     healthcheck:
       test:
         - CMD

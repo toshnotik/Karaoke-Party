@@ -26,6 +26,7 @@ class GameEngine:
         total_rounds = mode.total_rounds
         room.game.status = GameStatus.READY
         room.game.mode = mode_identifier
+        room.game.mode_instance = mode
         room.game.total_rounds = total_rounds
         room.mark_public_state_changed()
 
@@ -64,10 +65,17 @@ class GameEngine:
             value=value,
             submitted_at=submitted_at or datetime.now(UTC),
         )
-        mode.validate_action(round_state, action)
-        round_state.accepted_actions.append(action)
+        mode.accept_action(round_state, action)
         room.mark_public_state_changed()
         return action
+
+    def judge_round(self, room: Room, mode: GameMode, correct: bool) -> None:
+        round_state = self._require_round(room, mode, RoundPhase.ACTIVE)
+        should_reveal = mode.judge_round(round_state, correct)
+        if should_reveal:
+            round_state.result = mode.resolve_round(round_state)
+            round_state.phase = RoundPhase.REVEAL
+        room.mark_public_state_changed()
 
     def reveal_round(self, room: Room, mode: GameMode) -> None:
         round_state = self._require_round(room, mode, RoundPhase.ACTIVE)

@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 from pydantic.alias_generators import to_camel
 
 from app.game.state import GameStatus, RoundPhase, ScoreTargetType
+from app.game.modes.guess_song import GuessSongRoundState
 from app.realtime.manager import connection_manager
 from app.rooms.models import ParticipationType, Player, Room
 from app.rooms.store import (
@@ -31,8 +32,21 @@ class PublicPlayer(ApiModel):
 
 
 class PublicRoundResult(ApiModel):
-    answer: str
+    answer: str | None = None
     correct_player_ids: list[str]
+    song: "PublicSong | None" = None
+    winner_player_id: str | None = None
+
+
+class PublicSong(ApiModel):
+    title: str
+    artist: str
+    year: int | None
+
+
+class PublicModeState(ApiModel):
+    current_responder_id: str | None
+    excluded_player_ids: list[str]
 
 
 class PublicRound(ApiModel):
@@ -41,6 +55,7 @@ class PublicRound(ApiModel):
     phase: RoundPhase
     prompt: str
     result: PublicRoundResult | None
+    mode_state: PublicModeState | None = None
 
 
 class PublicScore(ApiModel):
@@ -161,9 +176,23 @@ def _public_game(room: Room) -> PublicGame:
     if round_state is not None:
         result = None
         if round_state.result is not None:
-            result = PublicRoundResult(
-                answer=round_state.result.answer,
-                correct_player_ids=list(round_state.result.correct_player_ids),
+            if isinstance(round_state.mode_state, GuessSongRoundState):
+                song = round_state.mode_state.song
+                result = PublicRoundResult(
+                    correct_player_ids=list(round_state.result.correct_player_ids),
+                    song=PublicSong(title=song.title, artist=song.artist, year=song.year),
+                    winner_player_id=round_state.mode_state.winner_player_id,
+                )
+            else:
+                result = PublicRoundResult(
+                    answer=round_state.result.answer,
+                    correct_player_ids=list(round_state.result.correct_player_ids),
+                )
+        mode_state = None
+        if isinstance(round_state.mode_state, GuessSongRoundState):
+            mode_state = PublicModeState(
+                current_responder_id=round_state.mode_state.current_responder_id,
+                excluded_player_ids=list(round_state.mode_state.excluded_player_ids),
             )
         public_round = PublicRound(
             id=round_state.id,
@@ -171,6 +200,7 @@ def _public_game(room: Room) -> PublicGame:
             phase=round_state.phase,
             prompt=round_state.prompt,
             result=result,
+            mode_state=mode_state,
         )
 
     return PublicGame(

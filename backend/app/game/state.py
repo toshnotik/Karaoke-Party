@@ -49,6 +49,7 @@ class RoundState:
     prompt: str
     accepted_actions: list[PlayerAction] = field(default_factory=list)
     result: RoundResult | None = None
+    mode_state: object | None = None
 
 
 @dataclass
@@ -62,6 +63,7 @@ class Score:
 class GameState:
     status: GameStatus = GameStatus.LOBBY
     mode: str | None = None
+    mode_instance: object | None = None
     round_number: int = 0
     total_rounds: int = 0
     current_round: RoundState | None = None

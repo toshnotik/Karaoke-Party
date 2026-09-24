@@ -19,6 +19,8 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+data/songs/media/*
+!data/songs/media/.gitkeep
 
 # Tooling and local files
 .idea/

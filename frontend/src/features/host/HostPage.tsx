@@ -59,7 +59,7 @@ export function HostPage() {
         <PlayerRoster players={room.players} />
       </section>
 
-      {(room.game.mode === null || room.game.mode === 'dummy') && hostToken && (
+      {(room.game.mode === null || ['dummy', 'guess_song'].includes(room.game.mode)) && hostToken && (
         <HostGamePanel room={room} hostToken={hostToken} />
       )}
 

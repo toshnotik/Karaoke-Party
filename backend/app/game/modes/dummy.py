@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from app.game.errors import InvalidPlayerAction
+from app.game.errors import InvalidPlayerAction, InvalidRoundPhase
 from app.game.state import (
     PlayerAction,
     RoundPhase,
@@ -35,7 +35,7 @@ class DummyGameMode:
             prompt=prompt,
         )
 
-    def validate_action(self, round_state: RoundState, action: PlayerAction) -> None:
+    def accept_action(self, round_state: RoundState, action: PlayerAction) -> None:
         if action.action_type != "answer" or not isinstance(action.value, str):
             raise InvalidPlayerAction("Dummy mode accepts text answers only")
         if any(
@@ -44,6 +44,10 @@ class DummyGameMode:
             for accepted in round_state.accepted_actions
         ):
             raise InvalidPlayerAction("Player already answered this round")
+        round_state.accepted_actions.append(action)
+
+    def judge_round(self, round_state: RoundState, correct: bool) -> bool:
+        raise InvalidRoundPhase("Dummy mode does not support host judging")
 
     def resolve_round(self, round_state: RoundState) -> RoundResult:
         _, expected_answer = self._questions[round_state.number - 1]

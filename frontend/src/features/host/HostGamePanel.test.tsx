@@ -11,6 +11,7 @@ vi.mock('../../api/game', () => ({
   activateRound: vi.fn(),
   configureGame: vi.fn(),
   finishRound: vi.fn(),
+  judgeRound: vi.fn(),
   revealRound: vi.fn(),
   showScoreboard: vi.fn(),
   startGame: vi.fn(),
@@ -24,15 +25,15 @@ beforeEach(() => {
 })
 
 it.each([
-  ['lobby', null, 'Configure Dummy Game'],
-  ['ready', null, 'Start Game'],
-  ['playing', 'intro', 'Activate Round'],
-  ['playing', 'active', 'Reveal'],
-  ['playing', 'reveal', 'Show Scoreboard'],
-  ['playing', 'scoreboard', 'Finish Round'],
+  ['lobby', null, 'Configure Dummy Game', 2],
+  ['ready', null, 'Start Game', 1],
+  ['playing', 'intro', 'Activate Round', 1],
+  ['playing', 'active', 'Reveal', 1],
+  ['playing', 'reveal', 'Show Scoreboard', 1],
+  ['playing', 'scoreboard', 'Finish Round', 1],
 ] as const)(
   'enables the correct command for %s / %s',
-  (status, phase, enabledLabel) => {
+  (status, phase, enabledLabel, enabledCount) => {
     const room = roomSnapshot()
     room.status = status
     room.game.status = status
@@ -43,6 +44,7 @@ it.each([
       phase,
       prompt: 'Question 1',
       result: null,
+      modeState: null,
     }
 
     render(<HostGamePanel room={room} hostToken="host-secret" />)
@@ -51,7 +53,7 @@ it.each([
     expect(screen.getByRole('button', { name: enabledLabel })).toBeEnabled()
     expect(
       buttons.filter((button) => !button.hasAttribute('disabled')),
-    ).toHaveLength(1)
+    ).toHaveLength(enabledCount)
   },
 )
 
@@ -68,4 +70,28 @@ it('does not replace authoritative room state when a command fails', async () =>
 
   expect(await screen.findByText('Game can only start when ready')).toBeInTheDocument()
   expect(useRoomStore.getState().room).toBe(room)
+})
+
+it('offers judging instead of reveal while a responder is pending', () => {
+  const room = roomSnapshot()
+  room.status = 'playing'
+  room.game.status = 'playing'
+  room.game.mode = 'guess_song'
+  room.game.currentRound = {
+    id: 'round-1',
+    number: 1,
+    phase: 'active',
+    prompt: 'Guess the song',
+    result: null,
+    modeState: {
+      currentResponderId: 'player-1',
+      excludedPlayerIds: [],
+    },
+  }
+
+  render(<HostGamePanel room={room} hostToken="host-secret" />)
+
+  expect(screen.getByRole('button', { name: 'Judge Correct' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Judge Wrong' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Reveal' })).toBeDisabled()
 })

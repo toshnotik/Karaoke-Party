@@ -5,6 +5,7 @@ import {
   activateRound,
   configureGame,
   finishRound,
+  judgeRound,
   revealRound,
   showScoreboard,
   startGame,
@@ -18,39 +19,52 @@ type HostGamePanelProps = {
 }
 
 type CommandName =
-  | 'configure'
+  | 'configure-dummy'
+  | 'configure-guess-song'
   | 'start'
   | 'activate'
   | 'reveal'
   | 'scoreboard'
   | 'finish'
+  | 'judge-correct'
+  | 'judge-wrong'
 
-function availableCommand(room: RoomSnapshot): CommandName | null {
-  if (room.game.status === 'lobby') return 'configure'
-  if (room.game.status === 'ready') return 'start'
-  if (room.game.status !== 'playing') return null
+function availableCommands(room: RoomSnapshot): CommandName[] {
+  if (room.game.status === 'lobby') {
+    return ['configure-dummy', 'configure-guess-song']
+  }
+  if (room.game.status === 'ready') return ['start']
+  if (room.game.status !== 'playing') return []
   switch (room.game.currentRound?.phase) {
-    case 'intro': return 'activate'
-    case 'active': return 'reveal'
-    case 'reveal': return 'scoreboard'
-    case 'scoreboard': return 'finish'
-    default: return null
+    case 'intro': return ['activate']
+    case 'active':
+      return room.game.currentRound.modeState?.currentResponderId
+        ? ['judge-correct', 'judge-wrong']
+        : ['reveal']
+    case 'reveal': return ['scoreboard']
+    case 'scoreboard': return ['finish']
+    default: return []
   }
 }
 
 export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
   const [running, setRunning] = useState<CommandName | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const available = availableCommand(room)
+  const available = availableCommands(room)
   const commands: Array<{
     name: CommandName
     label: string
     run: () => Promise<unknown>
   }> = [
     {
-      name: 'configure',
+      name: 'configure-dummy',
       label: 'Configure Dummy Game',
       run: () => configureGame(room.roomCode, hostToken, 'dummy'),
+    },
+    {
+      name: 'configure-guess-song',
+      label: 'Configure Guess Song',
+      run: () => configureGame(room.roomCode, hostToken, 'guess_song'),
     },
     {
       name: 'start',
@@ -61,6 +75,16 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
       name: 'activate',
       label: 'Activate Round',
       run: () => activateRound(room.roomCode, hostToken),
+    },
+    {
+      name: 'judge-correct',
+      label: 'Judge Correct',
+      run: () => judgeRound(room.roomCode, hostToken, true),
+    },
+    {
+      name: 'judge-wrong',
+      label: 'Judge Wrong',
+      run: () => judgeRound(room.roomCode, hostToken, false),
     },
     {
       name: 'reveal',
@@ -94,16 +118,16 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
   }
 
   return (
-    <section className={styles.panel} aria-labelledby="dummy-panel-title">
+    <section className={styles.panel} aria-labelledby="game-panel-title">
       <div>
         <p>Development integration</p>
-        <h2 id="dummy-panel-title">Dummy Game Controls</h2>
+        <h2 id="game-panel-title">Game Controls</h2>
       </div>
       <div className={styles.commands}>
         {commands.map((command) => (
           <Button
             key={command.name}
-            disabled={available !== command.name || running !== null}
+            disabled={!available.includes(command.name) || running !== null}
             loading={running === command.name}
             onClick={() => void execute(command)}
           >

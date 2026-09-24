@@ -69,11 +69,19 @@ export function finishRound(
   return hostCommand(roomCode, hostToken, 'round/finish')
 }
 
+export function judgeRound(
+  roomCode: string,
+  hostToken: string,
+  correct: boolean,
+): Promise<CommandResponse> {
+  return hostCommand(roomCode, hostToken, 'round/judge', { correct })
+}
+
 export function submitPlayerAction(
   roomCode: string,
   playerToken: string,
   actionType: string,
-  value: ActionValue,
+  value?: ActionValue,
 ): Promise<CommandResponse> {
   return apiRequest(
     `/api/rooms/${encodeURIComponent(roomCode)}/game/actions`,
@@ -83,7 +91,10 @@ export function submitPlayerAction(
         ...authorization(playerToken),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ actionType, value }),
+      body: JSON.stringify({
+        actionType,
+        ...(value === undefined ? {} : { value }),
+      }),
     },
   )
 }

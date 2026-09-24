@@ -1,0 +1,20 @@
+[
+  {
+    "id": "song-001",
+    "title": "Development Song One",
+    "artist": "Sample Artist",
+    "year": 2001,
+    "audio_file": "song-001.mp3",
+    "preview_start": 31,
+    "preview_duration": 8
+  },
+  {
+    "id": "song-002",
+    "title": "Development Song Two",
+    "artist": "Another Sample Artist",
+    "year": null,
+    "audio_file": "song-002.mp3",
+    "preview_start": 12,
+    "preview_duration": 10
+  }
+]

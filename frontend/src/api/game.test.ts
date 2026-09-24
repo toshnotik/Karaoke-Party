@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { configureGame, submitPlayerAction } from './game'
+import { configureGame, judgeRound, submitPlayerAction } from './game'
 
 describe('game API', () => {
   beforeEach(() => {
@@ -37,6 +37,22 @@ describe('game API', () => {
         },
         body: JSON.stringify({ actionType: 'answer', value: 'Answer 1' }),
       }),
+    )
+  })
+
+  it('sends a value-free buzz and typed host judgement', async () => {
+    await submitPlayerAction('K7PM', 'player-secret', 'buzz')
+    await judgeRound('K7PM', 'host-secret', false)
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:8000/api/rooms/K7PM/game/actions',
+      expect.objectContaining({ body: JSON.stringify({ actionType: 'buzz' }) }),
+    )
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:8000/api/rooms/K7PM/game/round/judge',
+      expect.objectContaining({ body: JSON.stringify({ correct: false }) }),
     )
   })
 })

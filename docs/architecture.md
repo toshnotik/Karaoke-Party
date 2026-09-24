@@ -327,6 +327,22 @@ A mode should define:
 - How round results are calculated.
 - What public state each role can see.
 
+`GuessSongMode` uses the common round lifecycle without adding an answering or
+judging phase. Its mode-specific round state stores the selected song, current
+responder, excluded players, winner, and judging status. Only responder and
+excluded-player ids are public while the round is active; title, artist, and
+optional year enter the public result only after reveal. Audio filenames remain
+private backend metadata.
+
+Buzz actions are serialized by the existing `RoomStore` lock. The first valid
+buzz sets the responder and increments the room version once; competing or
+repeated buzzes are conflicts and do not change version or broadcast. Host
+judging uses one authenticated `round/judge` command. A wrong judgement clears
+the responder and excludes that player while leaving the round active. A
+correct judgement reveals the round with its winner. Manual reveal without a
+winner is allowed whenever no responder awaits judgement, including after all
+players are exhausted or when the host ends attempts early.
+
 ---
 
 ## Data Storage

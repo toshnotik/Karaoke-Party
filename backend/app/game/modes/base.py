@@ -12,11 +12,13 @@ class GameMode(Protocol):
 
     def create_round(self, number: int) -> RoundState: ...
 
-    def validate_action(
+    def accept_action(
         self,
         round_state: RoundState,
         action: PlayerAction,
     ) -> None: ...
+
+    def judge_round(self, round_state: RoundState, correct: bool) -> bool: ...
 
     def resolve_round(self, round_state: RoundState) -> RoundResult: ...
 

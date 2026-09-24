@@ -12,3 +12,7 @@ class PlayerNotFound(Exception):
 
 class InvalidPlayerAction(Exception):
     pass
+
+
+class InvalidGameConfiguration(Exception):
+    pass
