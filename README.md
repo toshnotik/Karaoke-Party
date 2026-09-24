@@ -67,6 +67,17 @@ public origins.
 - `GET /api/rooms/{roomCode}` returns the public room snapshot.
 - `POST /api/rooms/{roomCode}/join` joins a remote player or reconnects one with a player token.
 
+## Game Command API
+
+Host game commands use `Authorization: Bearer <hostToken>` and expose explicit
+configure, start, activate, reveal, scoreboard, and finish endpoints under
+`/api/rooms/{roomCode}/game`. Player actions use the same Bearer scheme with
+the player's token at `POST /api/rooms/{roomCode}/game/actions`; the backend
+derives player identity from that token.
+
+Only the technical `dummy` mode is available for development and integration
+testing. It is not a user-facing game mode.
+
 Active rooms are process-local and are cleared when the backend restarts.
 
 ## Realtime

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
+from app.api.game import router as game_router
 from app.api.rooms import router as rooms_router
 from app.realtime.routes import router as realtime_router
 from app.settings import settings
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
     )
     application.include_router(health_router, prefix="/api")
     application.include_router(rooms_router, prefix="/api")
+    application.include_router(game_router, prefix="/api")
     application.include_router(realtime_router)
     return application
 

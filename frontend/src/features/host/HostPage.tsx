@@ -8,11 +8,13 @@ import { PlayerRoster } from '../../shared/components/PlayerRoster/PlayerRoster'
 import { RoomPageState } from '../../shared/components/RoomPageState/RoomPageState'
 import { getHostToken } from '../../shared/storage/roomTokens'
 import { useRoomStore } from '../../stores/roomStore'
+import { HostGamePanel } from './HostGamePanel'
 import styles from './HostPage.module.scss'
 
 export function HostPage() {
   const roomCode = useParams().roomCode?.toUpperCase() ?? ''
-  const hasHostAccess = getHostToken(roomCode) !== null
+  const hostToken = getHostToken(roomCode)
+  const hasHostAccess = hostToken !== null
   const { room, loading, error, realtimeStatus } = useRoomStore()
   useRoomSynchronization(roomCode, hasHostAccess && roomCode.length > 0)
 
@@ -56,6 +58,10 @@ export function HostPage() {
         </div>
         <PlayerRoster players={room.players} />
       </section>
+
+      {(room.game.mode === null || room.game.mode === 'dummy') && hostToken && (
+        <HostGamePanel room={room} hostToken={hostToken} />
+      )}
 
       <footer className={styles.actions}>
         <Link to="/">На главную</Link>

@@ -30,6 +30,10 @@ class InvalidPlayerTokenError(Exception):
     pass
 
 
+class InvalidHostTokenError(Exception):
+    pass
+
+
 class InMemoryRoomStore:
     def __init__(self) -> None:
         self._rooms: dict[str, Room] = {}
@@ -74,6 +78,25 @@ class InMemoryRoomStore:
             if room is None:
                 raise RoomNotFoundError
             return deepcopy(room)
+
+    def authenticate_host(self, room_code: str, host_token: str) -> None:
+        with self._lock:
+            room = self._rooms.get(room_code.upper())
+            if room is None:
+                raise RoomNotFoundError
+            if not secrets.compare_digest(room.host_token, host_token):
+                raise InvalidHostTokenError
+
+    def authenticate_player(self, room_code: str, player_token: str) -> Player:
+        with self._lock:
+            normalized_code = room_code.upper()
+            room = self._rooms.get(normalized_code)
+            if room is None:
+                raise RoomNotFoundError
+            player_location = self._players_by_token.get(player_token)
+            if player_location is None or player_location[0] != normalized_code:
+                raise InvalidPlayerTokenError
+            return deepcopy(self._find_player(room, player_location[1]))
 
     def add_or_reconnect_player(
         self,

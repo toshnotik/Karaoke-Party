@@ -245,9 +245,13 @@ GET  /api/rooms/{room_code}
 POST /api/rooms/{room_code}/join
 # Deferred: POST /api/rooms/{room_code}/host/players
 # Deferred: POST /api/rooms/{room_code}/host/teams
-POST /api/rooms/{room_code}/host/start
-POST /api/rooms/{room_code}/host/next-round
-POST /api/rooms/{room_code}/players/{player_id}/answer
+POST /api/rooms/{room_code}/game/configure
+POST /api/rooms/{room_code}/game/start
+POST /api/rooms/{room_code}/game/round/activate
+POST /api/rooms/{room_code}/game/round/reveal
+POST /api/rooms/{room_code}/game/round/scoreboard
+POST /api/rooms/{room_code}/game/round/finish
+POST /api/rooms/{room_code}/game/actions
 
 GET  /api/songs
 POST /api/songs
@@ -404,8 +408,8 @@ Remote Player UI should be minimal during active play:
 - Display accepted/rejected feedback.
 - Show score and result summaries.
 
-Remote player identity can start as a locally stored token returned by the backend when joining.
-Authentication can be deferred until there is a real need for accounts.
+Remote player identity uses a locally stored token returned by the backend when joining.
+Protected player actions send that token as an HTTP Bearer credential; account-based authentication remains deferred.
 
 ### Admin
 

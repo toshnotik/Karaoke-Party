@@ -55,3 +55,8 @@ export type JoinRoomResponse = {
   playerToken: string
   room: RoomSnapshot
 }
+
+export type CommandResponse = {
+  roomCode: string
+  version: number
+}
