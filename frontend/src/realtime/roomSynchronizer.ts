@@ -9,6 +9,7 @@ type RoomSynchronizerOptions<Snapshot extends VersionedSnapshot> = {
   getRoom: () => Snapshot | null
   loadRoom: () => Promise<Snapshot>
   setRealtimeStatus: (status: RealtimeStatus) => void
+  onScreenCommand?: (command: 'continue_audio') => void
   createSocket?: (
     onEvent: (event: RoomEvent) => void,
     onStatusChange: (status: RealtimeStatus) => void,
@@ -52,6 +53,10 @@ export class RoomSynchronizer<Snapshot extends VersionedSnapshot> {
   }
 
   private handleEvent(event: RoomEvent): void {
+    if (event.type === 'screen.command') {
+      this.options.onScreenCommand?.(event.command)
+      return
+    }
     const localVersion = this.options.getRoom()?.version ?? 0
     if (event.version <= localVersion) {
       return

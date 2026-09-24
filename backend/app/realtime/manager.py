@@ -1,6 +1,14 @@
+from typing import Literal
+
 from fastapi import WebSocket
 
-from app.realtime.messages import RoomEvent, room_connected, room_updated
+from app.realtime.messages import (
+    RoomEvent,
+    ScreenCommandEvent,
+    room_connected,
+    room_updated,
+    screen_command,
+)
 
 
 class ConnectionManager:
@@ -43,6 +51,19 @@ class ConnectionManager:
             except Exception:
                 self.disconnect(normalized_code, websocket)
 
+    async def broadcast_screen_command(
+        self,
+        room_code: str,
+        command: Literal["continue_audio"],
+    ) -> None:
+        normalized_code = room_code.upper()
+        event = screen_command(normalized_code, command)
+        for websocket in tuple(self._connections.get(normalized_code, ())):
+            try:
+                await self._send(websocket, event)
+            except Exception:
+                self.disconnect(normalized_code, websocket)
+
     def connection_count(self, room_code: str) -> int:
         return len(self._connections.get(room_code.upper(), ()))
 
@@ -50,7 +71,10 @@ class ConnectionManager:
         self._connections.clear()
 
     @staticmethod
-    async def _send(websocket: WebSocket, event: RoomEvent) -> None:
+    async def _send(
+        websocket: WebSocket,
+        event: RoomEvent | ScreenCommandEvent,
+    ) -> None:
         await websocket.send_json(event.model_dump(by_alias=True))
 
 

@@ -202,3 +202,23 @@ def test_rooms_are_isolated_and_dead_connection_is_removed() -> None:
     assert room_two.events == []
     assert manager.connection_count("ONE1") == 1
     assert manager.connection_count("TWO2") == 1
+
+
+def test_screen_command_uses_ephemeral_event_without_version() -> None:
+    manager = ConnectionManager()
+    screen = FakeWebSocket()
+
+    async def scenario() -> None:
+        await manager.connect("ONE1", cast(WebSocket, screen), 7)
+        screen.events.clear()
+        await manager.broadcast_screen_command("ONE1", "continue_audio")
+
+    asyncio.run(scenario())
+
+    assert screen.events == [
+        {
+            "type": "screen.command",
+            "roomCode": "ONE1",
+            "command": "continue_audio",
+        }
+    ]

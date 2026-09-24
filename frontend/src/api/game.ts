@@ -98,3 +98,20 @@ export function submitPlayerAction(
     },
   )
 }
+
+export function continueScreenAudio(
+  roomCode: string,
+  hostToken: string,
+): Promise<{ command: 'continue_audio' }> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/screen/commands`,
+    {
+      method: 'POST',
+      headers: {
+        ...authorization(hostToken),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ command: 'continue_audio' }),
+    },
+  )
+}

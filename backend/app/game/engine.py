@@ -34,6 +34,8 @@ class GameEngine:
         if room.game.status is not GameStatus.READY:
             raise InvalidGameState("Game can only start when ready")
         self._require_configured_mode(room, mode)
+        if mode.identifier == "guess_song" and not room.players:
+            raise InvalidGameState("Guess Song requires at least one player")
 
         first_round = mode.create_round(1)
         room.game.status = GameStatus.PLAYING

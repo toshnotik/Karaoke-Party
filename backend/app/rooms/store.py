@@ -7,6 +7,7 @@ from threading import RLock
 from typing import Generic, TypeVar
 from uuid import uuid4
 
+from app.game.state import GameStatus
 from app.rooms.models import ParticipationType, Player, Room
 
 
@@ -31,6 +32,10 @@ class InvalidPlayerTokenError(Exception):
 
 
 class InvalidHostTokenError(Exception):
+    pass
+
+
+class PlayerJoinClosedError(Exception):
     pass
 
 
@@ -125,6 +130,9 @@ class InMemoryRoomStore:
                     value=(deepcopy(player), False),
                     changed=room.version != previous_version,
                 )
+
+            if room.game.status not in (GameStatus.LOBBY, GameStatus.READY):
+                raise PlayerJoinClosedError
 
             new_token = self._generate_unique_token(self._players_by_token)
             player = Player(

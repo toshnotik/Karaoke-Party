@@ -104,6 +104,8 @@ export function PlayerPage() {
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 422) {
         setJoinError('Проверьте имя: допустимо от 1 до 40 символов.')
+      } else if (requestError instanceof ApiError && requestError.status === 409) {
+        setJoinError('Игра уже началась. Новые игроки смогут войти в следующую игру.')
       } else {
         setJoinError('Не удалось присоединиться. Проверьте комнату и соединение.')
       }
@@ -158,6 +160,7 @@ export function PlayerPage() {
           room={room}
           playerId={credentials.playerId}
           playerToken={credentials.token}
+          realtimeStatus={realtimeStatus}
         />
       </main>
     )

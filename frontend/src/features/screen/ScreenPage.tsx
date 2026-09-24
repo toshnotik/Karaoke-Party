@@ -11,20 +11,17 @@ import { GameScoreboard } from '../../shared/components/GameScoreboard/GameScore
 import { PlayerRoster } from '../../shared/components/PlayerRoster/PlayerRoster'
 import { RoomPageState } from '../../shared/components/RoomPageState/RoomPageState'
 import { playerJoinUrl } from '../../shared/urls'
-import { GuessSongAudioController } from './audioController'
+import { GuessSongAudioController, type AudioStatus } from './audioController'
 import styles from './ScreenPage.module.scss'
 
 export function ScreenPage() {
   const roomCode = useParams().roomCode?.toUpperCase() ?? ''
-  const { screen, loading, error, realtimeStatus } = useScreenSynchronization(roomCode)
+  const { screen, loading, error, realtimeStatus, continueAudioRequest } = useScreenSynchronization(roomCode)
   const [unlocked, setUnlocked] = useState(false)
-  const [audioBlocked, setAudioBlocked] = useState(false)
+  const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle')
   const controllerRef = useRef<GuessSongAudioController | null>(null)
   if (controllerRef.current === null) {
-    controllerRef.current = new GuessSongAudioController(new Audio(), () => {
-      setAudioBlocked(true)
-      setUnlocked(false)
-    })
+    controllerRef.current = new GuessSongAudioController(new Audio(), setAudioStatus)
   }
 
   const round = screen?.game.currentRound
@@ -34,9 +31,14 @@ export function ScreenPage() {
     void controllerRef.current?.sync({
       roundId: round.id,
       playback: screen.playback,
-      shouldPlay: round.phase === 'active' && responderId === null,
+      responderPending: responderId !== null,
     })
   }, [responderId, round, screen])
+  useEffect(() => {
+    if (continueAudioRequest > 0) {
+      void controllerRef.current?.continueSegment()
+    }
+  }, [continueAudioRequest])
   useEffect(() => () => controllerRef.current?.destroy(), [])
 
   if (loading && screen === null) return <RoomPageState loading screen />
@@ -45,12 +47,12 @@ export function ScreenPage() {
   const unlock = () => {
     controllerRef.current?.unlock()
     setUnlocked(true)
-    setAudioBlocked(false)
+    setAudioStatus('idle')
     if (round) {
       void controllerRef.current?.sync({
         roundId: round.id,
         playback: screen.playback,
-        shouldPlay: round.phase === 'active' && responderId === null,
+        responderPending: responderId !== null,
       })
     }
   }
@@ -58,27 +60,27 @@ export function ScreenPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}><Brand /><ConnectionStatus status={realtimeStatus} /></header>
-      {!unlocked && <AudioUnlock blocked={audioBlocked} onUnlock={unlock} />}
-      {unlocked && <ScreenGameView screen={screen} />}
+      {!unlocked && <AudioUnlock onUnlock={unlock} />}
+      {unlocked && <ScreenGameView screen={screen} audioStatus={audioStatus} onRetry={() => void controllerRef.current?.retry()} />}
     </main>
   )
 }
 
-function AudioUnlock({ blocked, onUnlock }: { blocked: boolean; onUnlock: () => void }) {
+function AudioUnlock({ onUnlock }: { onUnlock: () => void }) {
   return (
     <section className={styles.center}>
       <p className={styles.kicker}>Игровой экран</p>
-      <h1>{blocked ? 'Не удалось включить звук' : 'Включить игровой экран'}</h1>
+      <h1>Включить игровой экран</h1>
       <p>Звук будет воспроизводиться только здесь.</p>
       <Button type="primary" size="large" onClick={onUnlock}>Готов к игре</Button>
     </section>
   )
 }
 
-function ScreenGameView({ screen }: { screen: ScreenSnapshot }) {
+function ScreenGameView({ screen, audioStatus, onRetry }: { screen: ScreenSnapshot; audioStatus: AudioStatus; onRetry: () => void }) {
   const round = screen.game.currentRound
   if (screen.game.status === 'lobby' || screen.game.status === 'ready') return <Lobby screen={screen} />
-  if (screen.game.status === 'finished') return <ScoreView title="Игра окончена" screen={screen} />
+  if (screen.game.status === 'finished') return <FinalResults screen={screen} />
   if (round?.phase === 'scoreboard') return <ScoreView title="Результаты" screen={screen} />
   if (round?.phase === 'reveal' && round.result?.song) {
     const winner = screen.players.find((player) => player.id === round.result?.winnerPlayerId)
@@ -97,6 +99,18 @@ function ScreenGameView({ screen }: { screen: ScreenSnapshot }) {
     if (responder) {
       return <section className={styles.center}><p className={styles.kicker}>Отвечает</p><h1 className={styles.responder}>{responder.name}</h1><p>Назови песню!</p></section>
     }
+    if (audioStatus === 'error') {
+      return <section className={styles.center}><p className={styles.kicker}>Проблема со звуком</p><h1>Не удалось воспроизвести аудио</h1><Button type="primary" size="large" onClick={onRetry}>Повторить</Button></section>
+    }
+    if (audioStatus === 'missing') {
+      return <section className={styles.center}><p className={styles.kicker}>Проблема со звуком</p><h1>Не найден аудиофайл для этой песни</h1><p>Ведущий может показать ответ и продолжить игру</p></section>
+    }
+    if (audioStatus === 'exhausted') {
+      return <section className={styles.center}><p className={styles.kicker}>Раунд продолжается</p><h1>Аудиозапись закончилась</h1><p>Игроки всё ещё могут отвечать</p></section>
+    }
+    if (audioStatus === 'fragment-ended') {
+      return <section className={styles.center}><p className={styles.kicker}>Раунд продолжается</p><h1>Фрагмент закончился</h1><p>Игроки всё ещё могут нажать «ЗНАЮ!»</p></section>
+    }
     return <section className={styles.center}><p className={styles.kicker}>Раунд {round.number} из {screen.game.totalRounds}</p><div className={styles.music} aria-hidden="true"><span /><span /><span /><span /></div><h1>Слушаем...</h1></section>
   }
   return <section className={styles.center}><p className={styles.kicker}>Раунд {round?.number} из {screen.game.totalRounds}</p><h1>Угадай мелодию</h1><p>Приготовьтесь</p></section>
@@ -109,4 +123,26 @@ function Lobby({ screen }: { screen: ScreenSnapshot }) {
 
 function ScoreView({ title, screen }: { title: string; screen: ScreenSnapshot }) {
   return <section className={styles.center}><p className={styles.kicker}>Угадай мелодию</p><h1>{title}</h1><GameScoreboard players={screen.players} scores={screen.game.scores} /></section>
+}
+
+function FinalResults({ screen }: { screen: ScreenSnapshot }) {
+  const points = new Map(
+    screen.game.scores
+      .filter((score) => score.targetType === 'player')
+      .map((score) => [score.targetId, score.points]),
+  )
+  const highestScore = Math.max(0, ...screen.players.map((player) => points.get(player.id) ?? 0))
+  const leaders = screen.players.filter((player) => (points.get(player.id) ?? 0) === highestScore)
+  return (
+    <section className={styles.center}>
+      <p className={styles.kicker}>Финальные результаты</p>
+      <h1>Игра окончена</h1>
+      {leaders.length === 1 ? (
+        <p className={styles.winner}>Победитель: {leaders[0].name} · {highestScore}</p>
+      ) : (
+        <p className={styles.winner}>Лидеры: {leaders.map((leader) => leader.name).join(', ')} · {highestScore}</p>
+      )}
+      <GameScoreboard players={screen.players} scores={screen.game.scores} />
+    </section>
+  )
 }

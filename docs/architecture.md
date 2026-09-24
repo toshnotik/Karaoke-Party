@@ -290,9 +290,25 @@ Use monotonically increasing room versions so clients can ignore stale messages 
 
 ## Realtime Contract
 
-The backend initially sends `room.connected` after connection and `room.updated`
-after a successful public state change. Both events contain only the room code
-and current version. More specific events remain deferred until they are needed.
+The backend sends `room.connected` after connection and `room.updated` after a
+successful public state change. Both events contain only the room code and
+current version.
+
+Playback-only Host actions use a deliberately small ephemeral contract:
+
+```json
+{
+  "type": "screen.command",
+  "roomCode": "ABCD",
+  "command": "continue_audio"
+}
+```
+
+The event is emitted only after `POST /api/rooms/{room_code}/screen/commands`
+authenticates the room Host and validates the current Guess Song state. It is not
+a Game Engine transition, is not placed in `RoomSnapshot`, and does not increment
+`Room.version`. Rejected commands emit no event. This is a focused playback
+contract rather than a generic command bus.
 
 Clients should treat WebSocket events as hints that backend state changed.
 For complex recovery, reconnect, or version mismatch, the client should fetch `GET /api/rooms/{room_code}` and replace local room state with the backend snapshot.
@@ -300,7 +316,8 @@ For complex recovery, reconnect, or version mismatch, the client should fetch `G
 Screen uses the same room WebSocket connection but reloads the role-specific
 `GET /api/rooms/{room_code}/screen` snapshot. That response may add safe
 playback metadata for the active Guess Song round; Player and Host room
-snapshots do not receive it, and WebSocket events remain metadata-free.
+snapshots do not receive it. Versioned room events remain metadata-free; the
+ephemeral Screen command carries only its fixed command name.
 
 The WebSocket manager tracks public connections by room in one backend process.
 It must not equate a Player with a WebSocket connection: local players have no connection, and remote players remain room participants while temporarily disconnected.
@@ -353,7 +370,14 @@ Song media is addressed publicly by Song id through
 filename under the configured media directory and rejects missing files or any
 resolved path outside that directory. Clients never submit or receive a local
 filesystem path. Screen alone owns `HTMLAudioElement` playback; Host and Player
-only issue commands and render authoritative snapshots.
+only issue commands and render authoritative snapshots. Screen also owns the
+local playback position and presentation states such as listening, fragment
+ended, media exhausted, and playback error. A Host `continue_audio` command
+starts one more `previewDuration` segment from the Screen's current position.
+It never changes round phase or causes reveal, judging, scoring, or a room version
+increment. After refresh, exact playback position may be lost and playback may
+restart at `previewStart` after a new user gesture; no server-synchronized audio
+clock or Screen-to-Host playback telemetry exists in the MVP.
 
 ---
 

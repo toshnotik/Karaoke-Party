@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { submitPlayerAction } from '../../api/game'
 import type { RoomSnapshot } from '../../api/types'
+import type { RealtimeStatus } from '../../stores/roomStore'
 import { GameScoreboard } from '../../shared/components/GameScoreboard/GameScoreboard'
 import styles from './PlayerGamePanel.module.scss'
 
@@ -11,9 +12,10 @@ type PlayerGamePanelProps = {
   room: RoomSnapshot
   playerId: string
   playerToken: string
+  realtimeStatus: RealtimeStatus
 }
 
-export function PlayerGamePanel({ room, playerId, playerToken }: PlayerGamePanelProps) {
+export function PlayerGamePanel({ room, playerId, playerToken, realtimeStatus }: PlayerGamePanelProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const round = room.game.currentRound
@@ -40,10 +42,10 @@ export function PlayerGamePanel({ room, playerId, playerToken }: PlayerGamePanel
   }
 
   if (room.game.status === 'finished') {
-    return <GameState title="Игра окончена" score={ownScore}><GameScoreboard players={room.players} scores={room.game.scores} /></GameState>
+    return <GameState title="Игра окончена" score={ownScore}><GameScoreboard players={room.players} scores={room.game.scores} currentPlayerId={playerId} /></GameState>
   }
   if (round?.phase === 'scoreboard') {
-    return <GameState title="Результаты" score={ownScore}><GameScoreboard players={room.players} scores={room.game.scores} /></GameState>
+    return <GameState title="Результаты" score={ownScore}><GameScoreboard players={room.players} scores={room.game.scores} currentPlayerId={playerId} /></GameState>
   }
   if (round?.phase === 'reveal' && round.result?.song) {
     return (
@@ -66,8 +68,8 @@ export function PlayerGamePanel({ room, playerId, playerToken }: PlayerGamePanel
     }
     return (
       <GameState title={`Раунд ${round.number}`} score={ownScore}>
-        <button className={styles.buzz} disabled={pending} onClick={() => void buzz()}>
-          {pending ? 'ПРОВЕРЯЕМ...' : 'ЗНАЮ!'}
+        <button className={styles.buzz} disabled={pending || realtimeStatus !== 'connected'} onClick={() => void buzz()}>
+          {pending ? 'ПРОВЕРЯЕМ...' : realtimeStatus === 'connected' ? 'ЗНАЮ!' : 'ВОССТАНАВЛИВАЕМ СВЯЗЬ'}
         </button>
         {error && <Alert type="error" showIcon title={error} />}
       </GameState>

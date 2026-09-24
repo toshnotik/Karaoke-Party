@@ -60,7 +60,7 @@ export function HostPage() {
       </section>
 
       {(room.game.mode === null || room.game.mode === 'guess_song') && hostToken && (
-        <HostGamePanel room={room} hostToken={hostToken} />
+        <HostGamePanel room={room} hostToken={hostToken} realtimeStatus={realtimeStatus} />
       )}
 
       <footer className={styles.actions}>

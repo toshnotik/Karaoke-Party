@@ -10,6 +10,7 @@ type ScreenSynchronization = {
   loading: boolean
   error: string | null
   realtimeStatus: RealtimeStatus
+  continueAudioRequest: number
 }
 
 export function useScreenSynchronization(roomCode: string): ScreenSynchronization {
@@ -19,11 +20,12 @@ export function useScreenSynchronization(roomCode: string): ScreenSynchronizatio
     loading: true,
     error: null,
     realtimeStatus: 'disconnected',
+    continueAudioRequest: 0,
   })
 
   useEffect(() => {
     screenRef.current = null
-    setState({ screen: null, loading: true, error: null, realtimeStatus: 'disconnected' })
+    setState({ screen: null, loading: true, error: null, realtimeStatus: 'disconnected', continueAudioRequest: 0 })
     const synchronizer = new RoomSynchronizer<ScreenSnapshot>({
       roomCode,
       getRoom: () => screenRef.current,
@@ -44,6 +46,11 @@ export function useScreenSynchronization(roomCode: string): ScreenSynchronizatio
       },
       setRealtimeStatus: (realtimeStatus) =>
         setState((current) => ({ ...current, realtimeStatus })),
+      onScreenCommand: () =>
+        setState((current) => ({
+          ...current,
+          continueAudioRequest: current.continueAudioRequest + 1,
+        })),
     })
     void synchronizer.start()
     return () => synchronizer.stop()

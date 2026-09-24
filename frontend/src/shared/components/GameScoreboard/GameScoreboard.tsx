@@ -5,9 +5,10 @@ type GameScoreboardProps = {
   players: PublicPlayer[]
   scores: PublicScore[]
   compact?: boolean
+  currentPlayerId?: string
 }
 
-export function GameScoreboard({ players, scores, compact = false }: GameScoreboardProps) {
+export function GameScoreboard({ players, scores, compact = false, currentPlayerId }: GameScoreboardProps) {
   const points = new Map(
     scores
       .filter((score) => score.targetType === 'player')
@@ -20,7 +21,7 @@ export function GameScoreboard({ players, scores, compact = false }: GameScorebo
   return (
     <ol className={`${styles.scoreboard} ${compact ? styles.compact : ''}`}>
       {ranked.map(({ player, points: playerPoints }, index) => (
-        <li key={player.id}>
+        <li key={player.id} aria-current={player.id === currentPlayerId ? 'true' : undefined}>
           <span className={styles.rank}>{index + 1}</span>
           <strong>{player.name}</strong>
           <span>{playerPoints}</span>

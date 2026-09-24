@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import {
   activateRound,
+  continueScreenAudio,
   configureGame,
   finishRound,
   judgeRound,
@@ -10,13 +11,16 @@ import {
   showScoreboard,
   startGame,
 } from '../../api/game'
+import { ApiError } from '../../api/client'
 import type { RoomSnapshot } from '../../api/types'
+import type { RealtimeStatus } from '../../stores/roomStore'
 import { GameScoreboard } from '../../shared/components/GameScoreboard/GameScoreboard'
 import styles from './HostGamePanel.module.scss'
 
 type HostGamePanelProps = {
   room: RoomSnapshot
   hostToken: string
+  realtimeStatus: RealtimeStatus
 }
 
 type CommandName =
@@ -28,6 +32,7 @@ type CommandName =
   | 'finish'
   | 'judge-correct'
   | 'judge-wrong'
+  | 'continue-audio'
 
 function availableCommands(room: RoomSnapshot): CommandName[] {
   if (room.game.status === 'lobby') return ['configure-guess-song']
@@ -38,14 +43,14 @@ function availableCommands(room: RoomSnapshot): CommandName[] {
     case 'active':
       return room.game.currentRound.modeState?.currentResponderId
         ? ['judge-correct', 'judge-wrong']
-        : ['reveal']
+        : ['continue-audio', 'reveal']
     case 'reveal': return ['scoreboard']
     case 'scoreboard': return ['finish']
     default: return []
   }
 }
 
-export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
+export function HostGamePanel({ room, hostToken, realtimeStatus }: HostGamePanelProps) {
   const [running, setRunning] = useState<CommandName | null>(null)
   const [error, setError] = useState<string | null>(null)
   const available = availableCommands(room)
@@ -61,6 +66,11 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
     label: string
     run: () => Promise<unknown>
   }> = [
+    {
+      name: 'continue-audio',
+      label: 'Продолжить фрагмент',
+      run: () => continueScreenAudio(room.roomCode, hostToken),
+    },
     {
       name: 'configure-guess-song',
       label: 'Угадай мелодию',
@@ -109,9 +119,7 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
     try {
       await command.run()
     } catch (commandError) {
-      setError(
-        commandError instanceof Error ? commandError.message : 'Command failed',
-      )
+      setError(commandErrorMessage(command.name, commandError))
     } finally {
       setRunning(null)
     }
@@ -129,7 +137,7 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
         {commands.filter((command) => available.includes(command.name)).map((command) => (
           <Button
             key={command.name}
-            disabled={running !== null}
+            disabled={running !== null || realtimeStatus !== 'connected' || (command.name === 'start' && room.players.length === 0)}
             loading={running === command.name}
             onClick={() => void execute(command)}
           >
@@ -137,6 +145,9 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
           </Button>
         ))}
       </div>
+      {room.game.status === 'ready' && room.players.length === 0 && (
+        <Alert type="warning" showIcon title="Для начала игры нужен хотя бы один игрок" />
+      )}
       {round?.phase === 'reveal' && round.result?.song && (
         <div className={styles.reveal}>
           <strong>{round.result.song.title}</strong>
@@ -150,6 +161,19 @@ export function HostGamePanel({ room, hostToken }: HostGamePanelProps) {
       {error && <Alert type="error" showIcon title={error} />}
     </section>
   )
+}
+
+function commandErrorMessage(command: CommandName, error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return 'Нет доступа к управлению этой комнатой.'
+  }
+  if (command === 'start') {
+    return 'Не удалось начать игру. Проверьте, что подключён хотя бы один игрок.'
+  }
+  if (command === 'continue-audio') {
+    return 'Сначала дождитесь активного раунда или оцените ответ игрока.'
+  }
+  return 'Не удалось выполнить действие. Проверьте соединение и текущее состояние игры.'
 }
 
 function panelTitle(room: RoomSnapshot): string {

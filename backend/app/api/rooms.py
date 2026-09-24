@@ -10,6 +10,7 @@ from app.realtime.manager import connection_manager
 from app.rooms.models import ParticipationType, Player, Room
 from app.rooms.store import (
     InvalidPlayerTokenError,
+    PlayerJoinClosedError,
     RoomNotFoundError,
     room_store,
 )
@@ -175,6 +176,11 @@ async def join_room(
         raise HTTPException(status_code=404, detail="Room not found") from error
     except InvalidPlayerTokenError as error:
         raise HTTPException(status_code=401, detail="Invalid player token") from error
+    except PlayerJoinClosedError as error:
+        raise HTTPException(
+            status_code=409,
+            detail="New players cannot join after the game starts",
+        ) from error
 
     room = mutation.room
     player, created = mutation.value

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
@@ -8,15 +8,23 @@ import { roomSnapshot } from '../../test/fixtures'
 import { ScreenPage } from './ScreenPage'
 
 let currentScreen: ScreenSnapshot
+let continueAudioRequest = 0
+let changeAudioStatus: ((status: string) => void) | undefined
+const continueSegment = vi.fn()
 vi.mock('../../realtime/useScreenSynchronization', () => ({
   useScreenSynchronization: () => ({
-    screen: currentScreen, loading: false, error: null, realtimeStatus: 'connected',
+    screen: currentScreen, loading: false, error: null, realtimeStatus: 'connected', continueAudioRequest,
   }),
 }))
 vi.mock('./audioController', () => ({
   GuessSongAudioController: class {
+    constructor(_audio: HTMLAudioElement, onStatusChange: (status: string) => void) {
+      changeAudioStatus = onStatusChange
+    }
     unlock = vi.fn()
     sync = vi.fn()
+    continueSegment = continueSegment
+    retry = vi.fn()
     destroy = vi.fn()
   },
 }))
@@ -36,7 +44,11 @@ function renderScreen() {
   </Routes></MemoryRouter>)
 }
 
-beforeEach(() => { currentScreen = makeScreen() })
+beforeEach(() => {
+  currentScreen = makeScreen()
+  continueAudioRequest = 0
+  continueSegment.mockReset()
+})
 
 it('keeps lobby behind an explicit audio unlock', async () => {
   renderScreen()
@@ -87,4 +99,32 @@ it('shows sorted scoreboard and finished state', async () => {
   currentScreen.status = 'finished'; currentScreen.game.status = 'finished'
   view.rerender(<MemoryRouter initialEntries={['/screen/K7PM']}><Routes><Route path="/screen/:roomCode" element={<ScreenPage />} /></Routes></MemoryRouter>)
   expect(screen.getByText('Игра окончена')).toBeInTheDocument()
+  expect(screen.getByText('Победитель: Борис · 100')).toBeInTheDocument()
+})
+
+it('shows fragment ended without changing the active round and handles continue command', async () => {
+  currentScreen.status = 'playing'
+  currentScreen.game = {
+    mode: 'guess_song', status: 'playing', roundNumber: 1, totalRounds: 2, scores: [],
+    currentRound: { id: 'r1', number: 1, phase: 'active', prompt: 'Guess', result: null,
+      modeState: { currentResponderId: null, excludedPlayerIds: [] } },
+  }
+  const view = renderScreen()
+  await userEvent.click(screen.getByRole('button', { name: 'Готов к игре' }))
+  act(() => changeAudioStatus?.('fragment-ended'))
+  expect(screen.getByText('Фрагмент закончился')).toBeInTheDocument()
+  expect(currentScreen.game.currentRound?.phase).toBe('active')
+
+  continueAudioRequest = 1
+  view.rerender(<MemoryRouter initialEntries={['/screen/K7PM']}><Routes><Route path="/screen/:roomCode" element={<ScreenPage />} /></Routes></MemoryRouter>)
+  expect(continueSegment).toHaveBeenCalledOnce()
+})
+
+it('shows all tied leaders including a zero-score finish', async () => {
+  currentScreen.status = 'finished'
+  currentScreen.game.status = 'finished'
+  currentScreen.game.scores = []
+  renderScreen()
+  await userEvent.click(screen.getByRole('button', { name: 'Готов к игре' }))
+  expect(screen.getByText('Лидеры: Аня, Борис · 0')).toBeInTheDocument()
 })

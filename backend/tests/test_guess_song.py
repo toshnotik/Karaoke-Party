@@ -83,6 +83,7 @@ def snapshot(client: TestClient, room: dict[str, object]) -> dict[str, object]:
 
 def test_configure_and_start_use_manifest_order_and_hide_song(client: TestClient) -> None:
     room = create_room(client)
+    join(client, room, "Player")
     configured = host_command(client, room, "configure", {"mode": "guess_song"})
     assert configured.status_code == 200
     assert host_command(client, room, "start").status_code == 200
@@ -129,6 +130,53 @@ def test_configure_rejects_empty_songs(client: TestClient, monkeypatch: pytest.M
     assert response.status_code == 400
     assert "at least one song" in response.json()["detail"]
     assert snapshot(client, room)["version"] == 1
+
+
+def test_guess_song_start_requires_at_least_one_player_without_change_or_broadcast(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    room = create_room(client)
+    assert host_command(client, room, "configure", {"mode": "guess_song"}).status_code == 200
+    before = snapshot(client, room)
+    broadcast = AsyncMock()
+    monkeypatch.setattr(connection_manager, "broadcast_room_updated", broadcast)
+
+    response = host_command(client, room, "start")
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Guess Song requires at least one player"}
+    assert snapshot(client, room)["version"] == before["version"]
+    broadcast.assert_not_awaited()
+
+
+def test_new_player_cannot_join_during_game_but_existing_player_can_reconnect(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    room = create_room(client)
+    player = join(client, room, "Player")
+    assert host_command(client, room, "configure", {"mode": "guess_song"}).status_code == 200
+    assert host_command(client, room, "start").status_code == 200
+    before = snapshot(client, room)
+    broadcast = AsyncMock()
+    monkeypatch.setattr(connection_manager, "broadcast_room_updated", broadcast)
+
+    rejected = client.post(
+        f"/api/rooms/{room['roomCode']}/join",
+        json={"name": "Late player"},
+    )
+    reconnect = client.post(
+        f"/api/rooms/{room['roomCode']}/join",
+        json={"name": "Player", "playerToken": player["playerToken"]},
+    )
+
+    assert rejected.status_code == 409
+    assert rejected.json() == {"detail": "New players cannot join after the game starts"}
+    assert reconnect.status_code == 200
+    assert reconnect.json()["player"]["id"] == player["player"]["id"]
+    assert snapshot(client, room)["version"] == before["version"]
+    broadcast.assert_not_awaited()
 
 
 def test_buzz_judging_reveal_and_scoring_lifecycle(client: TestClient) -> None:

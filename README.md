@@ -77,8 +77,7 @@ derives player identity from that token.
 
 The technical `dummy` mode remains available for integration testing. Guess
 Song is implemented as a backend/domain mode with deterministic song order,
-atomic buzz handling, host judging, and scoring; its final game UI and audio
-playback are deferred.
+atomic buzz handling, host judging, scoring, and role-specific gameplay UI.
 
 ## Development Songs
 
@@ -95,18 +94,27 @@ To test audio locally:
 3. Restart the backend when changing the development container configuration;
    manifest edits are read on demand.
 
-The Screen is the only interface that plays audio. Missing local media is
-reported by the media endpoint as not found and does not expose its filesystem
+The Screen is the only interface that plays audio and requires an explicit user
+gesture to unlock playback. A fragment stops after its preview duration without
+ending the round. The Host can continue with another segment of the same length;
+the Screen resumes from its local position instead of returning to preview start.
+Missing or unplayable media is shown on Screen without exposing its filesystem
 location.
+
+For this MVP, playback position is local to Screen. Refreshing Screen loses the
+exact position and may restart the active song at preview start after audio is
+unlocked again. Audio is not synchronized to Host or Player devices, and Screen
+does not report playback or media errors back to Host automatically.
 
 Active rooms are process-local and are cleared when the backend restarts.
 
 ## Realtime
 
-Clients connect to `WS /ws/rooms/{roomCode}` and receive `room.connected` and
-`room.updated` events containing only the room code and version. Commands remain
-REST requests; clients fetch `GET /api/rooms/{roomCode}` whenever the announced
-version is newer than their local snapshot.
+Clients connect to `WS /ws/rooms/{roomCode}` and receive versioned
+`room.connected` and `room.updated` events. An authenticated Host may also send
+the ephemeral `screen.command` event for playback-only actions. It does not
+change room state or version. Clients fetch `GET /api/rooms/{roomCode}` whenever
+an announced room version is newer than their local snapshot.
 
 Connections and rooms are held in one backend process. Multi-process realtime
 coordination is not supported yet.
