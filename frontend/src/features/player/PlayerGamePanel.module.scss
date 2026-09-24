@@ -1,0 +1,30 @@
+.game {
+  min-height: calc(100vh - 5rem);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+
+  h1 { max-width: 22ch; margin: 0; font-size: 2.35rem; }
+  p { margin: 0; color: var(--color-muted); font-size: 1.15rem; }
+}
+
+.score { color: var(--color-cyan); font-weight: 800; text-transform: uppercase; }
+.artist { color: var(--color-text) !important; font-size: 1.5rem !important; font-weight: 750; }
+
+.buzz {
+  width: min(82vw, 22rem);
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: white;
+  box-shadow: 0 1.2rem 3.5rem rgb(255 79 112 / 35%);
+  font-size: 2.7rem;
+  font-weight: 900;
+  cursor: pointer;
+
+  &:disabled { cursor: wait; opacity: 0.65; }
+}

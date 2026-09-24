@@ -96,6 +96,28 @@ def test_configure_and_start_use_manifest_order_and_hide_song(client: TestClient
     assert "Hidden Artist" not in serialized
     assert "2001" not in serialized
     assert "secret/path.mp3" not in serialized
+    assert "playback" not in public
+
+
+def test_screen_snapshot_exposes_safe_playback_only_while_active(client: TestClient) -> None:
+    room, _, _ = prepare_active_round(client)
+
+    response = client.get(f"/api/rooms/{room['roomCode']}/screen")
+
+    assert response.status_code == 200
+    screen = response.json()
+    assert screen["playback"] == {
+        "mediaUrl": "/api/media/songs/song-1",
+        "previewStart": 10,
+        "previewDuration": 8,
+    }
+    serialized = str(screen)
+    assert "Hidden Title" not in serialized
+    assert "Hidden Artist" not in serialized
+    assert "secret/path.mp3" not in serialized
+
+    assert host_command(client, room, "round/reveal").status_code == 200
+    assert client.get(f"/api/rooms/{room['roomCode']}/screen").json()["playback"] is None
 
 
 def test_configure_rejects_empty_songs(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

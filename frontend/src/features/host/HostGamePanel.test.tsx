@@ -25,12 +25,12 @@ beforeEach(() => {
 })
 
 it.each([
-  ['lobby', null, 'Configure Dummy Game', 2],
-  ['ready', null, 'Start Game', 1],
-  ['playing', 'intro', 'Activate Round', 1],
-  ['playing', 'active', 'Reveal', 1],
-  ['playing', 'reveal', 'Show Scoreboard', 1],
-  ['playing', 'scoreboard', 'Finish Round', 1],
+  ['lobby', null, 'Угадай мелодию', 1],
+  ['ready', null, 'Начать игру', 1],
+  ['playing', 'intro', 'Запустить фрагмент', 1],
+  ['playing', 'active', 'Показать ответ', 1],
+  ['playing', 'reveal', 'Показать результаты', 1],
+  ['playing', 'scoreboard', 'Следующий раунд', 1],
 ] as const)(
   'enables the correct command for %s / %s',
   (status, phase, enabledLabel, enabledCount) => {
@@ -38,6 +38,8 @@ it.each([
     room.status = status
     room.game.status = status
     room.game.mode = status === 'lobby' ? null : 'dummy'
+    room.game.roundNumber = phase === null ? 0 : 1
+    room.game.totalRounds = phase === null ? 0 : 2
     room.game.currentRound = phase === null ? null : {
       id: 'round-1',
       number: 1,
@@ -49,11 +51,8 @@ it.each([
 
     render(<HostGamePanel room={room} hostToken="host-secret" />)
 
-    const buttons = screen.getAllByRole('button')
     expect(screen.getByRole('button', { name: enabledLabel })).toBeEnabled()
-    expect(
-      buttons.filter((button) => !button.hasAttribute('disabled')),
-    ).toHaveLength(enabledCount)
+    expect(screen.getAllByRole('button')).toHaveLength(enabledCount)
   },
 )
 
@@ -66,7 +65,7 @@ it('does not replace authoritative room state when a command fails', async () =>
   mockedStartGame.mockRejectedValue(new Error('Game can only start when ready'))
 
   render(<HostGamePanel room={room} hostToken="host-secret" />)
-  await userEvent.click(screen.getByRole('button', { name: 'Start Game' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Начать игру' }))
 
   expect(await screen.findByText('Game can only start when ready')).toBeInTheDocument()
   expect(useRoomStore.getState().room).toBe(room)
@@ -77,6 +76,7 @@ it('offers judging instead of reveal while a responder is pending', () => {
   room.status = 'playing'
   room.game.status = 'playing'
   room.game.mode = 'guess_song'
+  room.players = [{ id: 'player-1', name: 'Маша', participationType: 'remote' }]
   room.game.currentRound = {
     id: 'round-1',
     number: 1,
@@ -91,7 +91,27 @@ it('offers judging instead of reveal while a responder is pending', () => {
 
   render(<HostGamePanel room={room} hostToken="host-secret" />)
 
-  expect(screen.getByRole('button', { name: 'Judge Correct' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'Judge Wrong' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'Reveal' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Верно' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Неверно' })).toBeEnabled()
+  expect(screen.queryByRole('button', { name: 'Показать ответ' })).not.toBeInTheDocument()
+  expect(screen.getByText('Отвечает Маша')).toBeInTheDocument()
+})
+
+it('prevents duplicate host commands while a request is pending', async () => {
+  let resolve!: () => void
+  mockedStartGame.mockReturnValue(new Promise((done) => {
+    resolve = () => done({ roomCode: 'K7PM', version: 3 })
+  }))
+  const room = roomSnapshot()
+  room.status = 'ready'
+  room.game.status = 'ready'
+  room.game.mode = 'guess_song'
+  render(<HostGamePanel room={room} hostToken="host-secret" />)
+
+  const button = screen.getByRole('button', { name: 'Начать игру' })
+  await userEvent.click(button)
+  await userEvent.click(button)
+  expect(mockedStartGame).toHaveBeenCalledTimes(1)
+  expect(button).toBeDisabled()
+  resolve()
 })

@@ -18,6 +18,7 @@ import {
 } from '../../shared/storage/roomTokens'
 import { useRoomStore } from '../../stores/roomStore'
 import styles from './PlayerPage.module.scss'
+import { PlayerGamePanel } from './PlayerGamePanel'
 
 export function PlayerPage() {
   const roomCode = useParams().roomCode?.toUpperCase() ?? ''
@@ -45,7 +46,22 @@ export function PlayerPage() {
     let active = true
     void reconnectRequest.current
       .then((response) => {
-        if (active) setRoom(response.room)
+        if (active) {
+          const refreshed = {
+            token: response.playerToken,
+            name: response.player.name,
+            playerId: response.player.id,
+          }
+          if (
+            credentials.playerId !== refreshed.playerId ||
+            credentials.name !== refreshed.name ||
+            credentials.token !== refreshed.token
+          ) {
+            savePlayerCredentials(roomCode, refreshed)
+            setCredentials(refreshed)
+          }
+          setRoom(response.room)
+        }
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -130,6 +146,22 @@ export function PlayerPage() {
   const currentPlayer = room?.players.find(
     (player) => player.id === credentials.playerId,
   )
+
+  if (room?.game.mode === 'guess_song' && room.game.status !== 'lobby') {
+    return (
+      <main className={styles.lobbyPage}>
+        <header className={styles.header}>
+          <Brand compact />
+          <ConnectionStatus status={realtimeStatus} />
+        </header>
+        <PlayerGamePanel
+          room={room}
+          playerId={credentials.playerId}
+          playerToken={credentials.token}
+        />
+      </main>
+    )
+  }
 
   return (
     <main className={styles.lobbyPage}>

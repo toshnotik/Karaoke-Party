@@ -297,6 +297,11 @@ and current version. More specific events remain deferred until they are needed.
 Clients should treat WebSocket events as hints that backend state changed.
 For complex recovery, reconnect, or version mismatch, the client should fetch `GET /api/rooms/{room_code}` and replace local room state with the backend snapshot.
 
+Screen uses the same room WebSocket connection but reloads the role-specific
+`GET /api/rooms/{room_code}/screen` snapshot. That response may add safe
+playback metadata for the active Guess Song round; Player and Host room
+snapshots do not receive it, and WebSocket events remain metadata-free.
+
 The WebSocket manager tracks public connections by room in one backend process.
 It must not equate a Player with a WebSocket connection: local players have no connection, and remote players remain room participants while temporarily disconnected.
 It should not own game rules.
@@ -342,6 +347,13 @@ the responder and excludes that player while leaving the round active. A
 correct judgement reveals the round with its winner. Manual reveal without a
 winner is allowed whenever no responder awaits judgement, including after all
 players are exhausted or when the host ends attempts early.
+
+Song media is addressed publicly by Song id through
+`GET /api/media/songs/{song_id}`. The backend resolves the manifest-owned
+filename under the configured media directory and rejects missing files or any
+resolved path outside that directory. Clients never submit or receive a local
+filesystem path. Screen alone owns `HTMLAudioElement` playback; Host and Player
+only issue commands and render authoritative snapshots.
 
 ---
 

@@ -78,4 +78,21 @@ describe('PlayerPage', () => {
     expect(await screen.findByLabelText('Имя игрока')).toBeInTheDocument()
     expect(localStorage.getItem('karaoke-party:player:K7PM')).toBeNull()
   })
+
+  it('migrates legacy credentials through reconnect', async () => {
+    localStorage.setItem(
+      'karaoke-party:player:K7PM',
+      JSON.stringify({ token: 'saved-token', name: 'Маша' }),
+    )
+    mockedJoinRoom.mockResolvedValue({
+      player,
+      playerToken: 'saved-token',
+      room: roomSnapshot(2, [player]),
+    })
+
+    renderPlayer()
+
+    expect(await screen.findByText('Привет, Маша')).toBeInTheDocument()
+    expect(localStorage.getItem('karaoke-party:player:K7PM')).toContain('player-1')
+  })
 })

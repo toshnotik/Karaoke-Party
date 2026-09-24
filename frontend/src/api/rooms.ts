@@ -3,6 +3,7 @@ import type {
   CreateRoomResponse,
   JoinRoomResponse,
   RoomSnapshot,
+  ScreenSnapshot,
 } from './types'
 
 export function createRoom(): Promise<CreateRoomResponse> {
@@ -11,6 +12,10 @@ export function createRoom(): Promise<CreateRoomResponse> {
 
 export function getRoom(roomCode: string): Promise<RoomSnapshot> {
   return apiRequest(`/api/rooms/${encodeURIComponent(roomCode)}`)
+}
+
+export function getScreenRoom(roomCode: string): Promise<ScreenSnapshot> {
+  return apiRequest(`/api/rooms/${encodeURIComponent(roomCode)}/screen`)
 }
 
 export function joinRoom(

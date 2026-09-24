@@ -88,6 +88,17 @@ duration. Put local audio files in `data/songs/media/` using the manifest's
 `audio_file` names. Media files in that directory are ignored by Git, and no
 copyrighted MP3 files are stored in the repository.
 
+To test audio locally:
+
+1. Put a legally usable audio file in `data/songs/media/`.
+2. Add or update its metadata and `audio_file` name in `data/songs/songs.json`.
+3. Restart the backend when changing the development container configuration;
+   manifest edits are read on demand.
+
+The Screen is the only interface that plays audio. Missing local media is
+reported by the media endpoint as not found and does not expose its filesystem
+location.
+
 Active rooms are process-local and are cleared when the backend restarts.
 
 ## Realtime

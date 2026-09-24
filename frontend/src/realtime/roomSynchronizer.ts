@@ -1,12 +1,13 @@
-import type { RoomSnapshot } from '../api/types'
 import type { RealtimeStatus } from '../stores/roomStore'
 import type { RoomEvent } from './events'
 import { RoomSocket } from './roomSocket'
 
-type RoomSynchronizerOptions = {
+type VersionedSnapshot = { version: number }
+
+type RoomSynchronizerOptions<Snapshot extends VersionedSnapshot> = {
   roomCode: string
-  getRoom: () => RoomSnapshot | null
-  loadRoom: () => Promise<RoomSnapshot>
+  getRoom: () => Snapshot | null
+  loadRoom: () => Promise<Snapshot>
   setRealtimeStatus: (status: RealtimeStatus) => void
   createSocket?: (
     onEvent: (event: RoomEvent) => void,
@@ -14,13 +15,13 @@ type RoomSynchronizerOptions = {
   ) => Pick<RoomSocket, 'connect' | 'close'>
 }
 
-export class RoomSynchronizer {
+export class RoomSynchronizer<Snapshot extends VersionedSnapshot> {
   private active = false
   private socket: Pick<RoomSocket, 'connect' | 'close'> | null = null
   private targetVersion = 0
   private refreshing = false
 
-  constructor(private readonly options: RoomSynchronizerOptions) {}
+  constructor(private readonly options: RoomSynchronizerOptions<Snapshot>) {}
 
   async start(): Promise<void> {
     this.active = true

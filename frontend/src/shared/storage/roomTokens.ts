@@ -37,12 +37,12 @@ export function getPlayerCredentials(
     if (
       typeof value.token === 'string' &&
       typeof value.name === 'string' &&
-      typeof value.playerId === 'string'
+      (value.playerId === undefined || typeof value.playerId === 'string')
     ) {
       return {
         token: value.token,
         name: value.name,
-        playerId: value.playerId,
+        playerId: value.playerId ?? '',
       }
     }
   } catch {

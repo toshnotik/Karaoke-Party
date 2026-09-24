@@ -81,6 +81,16 @@ class RoomSnapshot(ApiModel):
     game: PublicGame
 
 
+class ScreenPlayback(ApiModel):
+    media_url: str
+    preview_start: int
+    preview_duration: int
+
+
+class ScreenSnapshot(RoomSnapshot):
+    playback: ScreenPlayback | None
+
+
 class CreateRoomResponse(ApiModel):
     room_code: str
     host_token: str
@@ -119,6 +129,30 @@ def get_room(room_code: str) -> RoomSnapshot:
         return _room_snapshot(room_store.get_room(room_code))
     except RoomNotFoundError as error:
         raise HTTPException(status_code=404, detail="Room not found") from error
+
+
+@router.get("/{room_code}/screen", response_model=ScreenSnapshot)
+def get_screen_room(room_code: str) -> ScreenSnapshot:
+    try:
+        room = room_store.get_room(room_code)
+    except RoomNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Room not found") from error
+
+    public = _room_snapshot(room)
+    playback = None
+    round_state = room.game.current_round
+    if (
+        round_state is not None
+        and round_state.phase is RoundPhase.ACTIVE
+        and isinstance(round_state.mode_state, GuessSongRoundState)
+    ):
+        song = round_state.mode_state.song
+        playback = ScreenPlayback(
+            media_url=f"/api/media/songs/{song.id}",
+            preview_start=song.preview_start,
+            preview_duration=song.preview_duration,
+        )
+    return ScreenSnapshot(**public.model_dump(), playback=playback)
 
 
 @router.post(

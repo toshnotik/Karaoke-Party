@@ -31,5 +31,9 @@ class Settings:
         )
     )
 
+    @property
+    def song_media_path(self) -> Path:
+        return self.song_manifest_path.parent / "media"
+
 
 settings = Settings()

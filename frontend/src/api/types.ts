@@ -55,6 +55,16 @@ export type RoomSnapshot = {
   game: PublicGame
 }
 
+export type ScreenPlayback = {
+  mediaUrl: string
+  previewStart: number
+  previewDuration: number
+}
+
+export type ScreenSnapshot = RoomSnapshot & {
+  playback: ScreenPlayback | null
+}
+
 export type CreateRoomResponse = {
   roomCode: string
   hostToken: string
